@@ -2,95 +2,49 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nepali OCR + NLP</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: Arial, sans-serif;
-    background: #0f172a;
-    color: #e2e8f0;
-    min-height: 100vh;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  h1 { font-size: 2rem; margin-bottom: 5px; color: #f8fafc; text-align: center; }
-  p.sub { color: #94a3b8; margin-bottom: 24px; text-align: center; }
-  .tabs { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; justify-content: center; }
-  .tab {
-    padding: 10px 24px; border: none; border-radius: 8px;
-    font-size: 1rem; cursor: pointer;
-    background: #1e293b; color: #94a3b8; transition: 0.2s;
-  }
-  .tab.active { background: #6366f1; color: white; }
-  .panel { display: none; width: 100%; max-width: 900px; }
-  .panel.active { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; }
-
-  /* Shared */
-  .box {
-    background: #1e293b; border-radius: 12px;
-    padding: 24px; border: 1px solid #334155;
-  }
-  .box h2 { color: #c7d2fe; font-size: 1rem; margin-bottom: 16px; }
-  button.btn {
-    padding: 10px 24px; border: none; border-radius: 8px;
-    font-size: 1rem; cursor: pointer; transition: 0.2s;
-  }
-  .btn-purple { background: #6366f1; color: white; }
-  .btn-purple:hover { background: #4f46e5; }
-  .btn-gray   { background: #334155; color: #e2e8f0; }
-  .btn-gray:hover { background: #475569; }
-
-  /* Character panel */
-  canvas {
-    border: 3px solid #334155; border-radius: 12px;
-    background: #1e293b; cursor: crosshair; display: block;
-  }
-  .btn-row { display: flex; gap: 10px; margin-top: 12px; }
-  #topResult {
-    font-size: 5rem; text-align: center;
-    color: #a5b4fc; min-height: 80px; margin-bottom: 8px;
-  }
-  .result-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-  .char { font-size: 2rem; width: 44px; text-align: center; color: #f1f5f9; }
-  .bar-wrap { flex: 1; }
-  .bar-label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 3px; }
-  .bar-bg { background: #0f172a; border-radius: 4px; height: 8px; }
-  .bar-fill { height: 8px; border-radius: 4px; background: #6366f1; transition: width 0.5s; }
-  #charHint { color: #64748b; font-size: 0.85rem; text-align: center; margin-top: 8px; }
-
-  /* Word panel */
-  input[type=text] {
-    width: 100%; padding: 10px 16px; border-radius: 8px;
-    border: 2px solid #334155; background: #0f172a;
-    color: #f1f5f9; font-size: 1.2rem; margin-bottom: 12px;
-  }
-  input[type=text]:focus { outline: none; border-color: #6366f1; }
-  #wordResult {
-    font-size: 2.5rem; text-align: center;
-    color: #a5b4fc; min-height: 60px; padding: 10px;
-  }
-  #wordImage { border-radius: 8px; display: none; width: 100%; margin-bottom: 12px; }
-
-  /* NLP panel */
-  .nlp-input-row { display: flex; gap: 10px; margin-bottom: 12px; }
-  .nlp-input-row input { margin-bottom: 0; }
-  .nlp-result { margin-bottom: 14px; }
-  .nlp-label { color: #94a3b8; font-size: 0.85rem; margin-bottom: 4px; }
-  .nlp-value { color: #f1f5f9; font-size: 1rem; background: #0f172a; padding: 8px 12px; border-radius: 6px; }
-  .keyword-chip {
-    display: inline-block; background: #312e81;
-    color: #c7d2fe; padding: 4px 10px; border-radius: 20px;
-    font-size: 0.85rem; margin: 3px;
-  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,sans-serif; background:#0f172a; color:#e2e8f0; min-height:100vh; padding:20px; display:flex; flex-direction:column; align-items:center; }
+  h1 { font-size:2rem; color:#f8fafc; text-align:center; margin-bottom:5px; }
+  p.sub { color:#94a3b8; text-align:center; margin-bottom:24px; }
+  .tabs { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; justify-content:center; }
+  .tab { padding:10px 24px; border:none; border-radius:8px; font-size:1rem; cursor:pointer; background:#1e293b; color:#94a3b8; }
+  .tab.active { background:#6366f1; color:white; }
+  .panel { display:none; width:100%; max-width:900px; }
+  .panel.active { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; }
+  .box { background:#1e293b; border-radius:12px; padding:24px; border:1px solid #334155; }
+  .box h2 { color:#c7d2fe; font-size:1rem; margin-bottom:16px; }
+  .btn { padding:10px 24px; border:none; border-radius:8px; font-size:1rem; cursor:pointer; }
+  .btn-p { background:#6366f1; color:white; }
+  .btn-g { background:#334155; color:#e2e8f0; }
+  canvas { border:3px solid #334155; border-radius:12px; background:#1e293b; cursor:crosshair; display:block; }
+  .btn-row { display:flex; gap:10px; margin-top:12px; }
+  #topResult { font-size:5rem; text-align:center; color:#a5b4fc; min-height:80px; margin-bottom:8px; }
+  .result-item { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .char { font-size:2rem; width:44px; text-align:center; }
+  .bar-wrap { flex:1; }
+  .bar-label { font-size:0.8rem; color:#94a3b8; margin-bottom:3px; }
+  .bar-bg { background:#0f172a; border-radius:4px; height:8px; }
+  .bar-fill { height:8px; border-radius:4px; background:#6366f1; transition:width 0.5s; }
+  #charHint { color:#64748b; font-size:0.85rem; text-align:center; margin-top:8px; }
+  input[type=text] { width:100%; padding:10px 16px; border-radius:8px; border:2px solid #334155; background:#0f172a; color:#f1f5f9; font-size:1.1rem; margin-bottom:12px; }
+  input[type=text]:focus { outline:none; border-color:#6366f1; }
+  #wordResult { font-size:2.5rem; text-align:center; color:#a5b4fc; min-height:60px; padding:10px; }
+  #wordImage { border-radius:8px; display:none; width:100%; margin-bottom:12px; }
+  .nlp-row { display:flex; gap:10px; margin-bottom:12px; }
+  .nlp-row input { margin-bottom:0; }
+  .nlp-result { margin-bottom:14px; }
+  .nlp-label { color:#94a3b8; font-size:0.85rem; margin-bottom:4px; }
+  .nlp-value { color:#f1f5f9; background:#0f172a; padding:8px 12px; border-radius:6px; }
+  .chip { display:inline-block; background:#312e81; color:#c7d2fe; padding:4px 10px; border-radius:20px; font-size:0.85rem; margin:3px; }
+  .fix { color:#fbbf24; font-size:0.85rem; }
 </style>
 </head>
 <body>
 
 <h1>🔤 Nepali OCR + NLP</h1>
-<p class="sub">Character Recognition · Word Recognition · Translation · Sentiment Analysis</p>
+<p class="sub">Character Recognition · Word Recognition · Translation · Sentiment</p>
 
 <div class="tabs">
   <button class="tab active" onclick="showTab('char')">✏️ Draw Character</button>
@@ -104,8 +58,8 @@
     <h2>Draw a Devanagari character</h2>
     <canvas id="canvas" width="280" height="280"></canvas>
     <div class="btn-row">
-      <button class="btn btn-purple" onclick="predictChar()">Predict</button>
-      <button class="btn btn-gray"   onclick="clearCanvas()">Clear</button>
+      <button class="btn btn-p" onclick="predictChar()">Predict</button>
+      <button class="btn btn-g" onclick="clearCanvas()">Clear</button>
     </div>
     <p id="charHint">Draw one character and click Predict</p>
   </div>
@@ -122,7 +76,8 @@
     <h2>Type a Nepali word — CRNN reads it</h2>
     <input type="text" id="wordInput" placeholder="नेपाल"
            onkeypress="if(event.key==='Enter') predictWord()" />
-    <button class="btn btn-purple" onclick="predictWord()">Read Word</button>
+    <button class="btn btn-p" onclick="predictWord()">Read Word</button>
+    <br><br>
     <img id="wordImage" />
     <div id="wordResult">?</div>
   </div>
@@ -130,17 +85,25 @@
 
 <!-- NLP Panel -->
 <div class="panel" id="nlpPanel">
-  <div class="box" style="min-width: 500px">
+  <div class="box" style="min-width:500px">
     <h2>Analyze Nepali text</h2>
-    <div class="nlp-input-row">
+    <div class="nlp-row">
       <input type="text" id="nlpInput" placeholder="नेपाल एक सुन्दर देश हो"
              onkeypress="if(event.key==='Enter') analyzeText()" />
-      <button class="btn btn-purple" onclick="analyzeText()">Analyze</button>
+      <button class="btn btn-p" onclick="analyzeText()">Analyze</button>
     </div>
 
     <div class="nlp-result">
       <div class="nlp-label">📖 Original Text</div>
       <div class="nlp-value" id="nlpOriginal">—</div>
+    </div>
+    <div class="nlp-result">
+      <div class="nlp-label">✏️ Corrected Text</div>
+      <div class="nlp-value" id="nlpCorrected">—</div>
+    </div>
+    <div class="nlp-result">
+      <div class="nlp-label">🔧 Spell Fixes</div>
+      <div class="nlp-value fix" id="nlpFixes">—</div>
     </div>
     <div class="nlp-result">
       <div class="nlp-label">🌐 English Translation</div>
@@ -162,7 +125,6 @@
 </div>
 
 <script>
-  // ── Tabs ───────────────────────────────────────────────────
   function showTab(tab) {
     ['char','word','nlp'].forEach((t,i) => {
       document.querySelectorAll('.tab')[i].classList.toggle('active', t===tab);
@@ -170,45 +132,35 @@
     });
   }
 
-  // ── Canvas ─────────────────────────────────────────────────
   const canvas = document.getElementById('canvas');
   const ctx    = canvas.getContext('2d');
   let drawing  = false;
-  ctx.strokeStyle = '#f1f5f9';
-  ctx.lineWidth   = 16;
-  ctx.lineCap     = 'round';
-  ctx.lineJoin    = 'round';
+  ctx.strokeStyle='#f1f5f9'; ctx.lineWidth=16; ctx.lineCap='round'; ctx.lineJoin='round';
+  canvas.addEventListener('mousedown', e=>{drawing=true; ctx.beginPath(); ctx.moveTo(...pos(e));});
+  canvas.addEventListener('mousemove', e=>{if(!drawing)return; ctx.lineTo(...pos(e)); ctx.stroke();});
+  canvas.addEventListener('mouseup',   ()=>drawing=false);
+  canvas.addEventListener('mouseleave',()=>drawing=false);
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;ctx.beginPath();ctx.moveTo(...pos(e.touches[0]));});
+  canvas.addEventListener('touchmove', e=>{e.preventDefault();if(!drawing)return;ctx.lineTo(...pos(e.touches[0]));ctx.stroke();});
+  canvas.addEventListener('touchend',  ()=>drawing=false);
+  function pos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
 
-  canvas.addEventListener('mousedown', e => { drawing=true; ctx.beginPath(); ctx.moveTo(...pos(e)); });
-  canvas.addEventListener('mousemove', e => { if(!drawing) return; ctx.lineTo(...pos(e)); ctx.stroke(); });
-  canvas.addEventListener('mouseup',   () => drawing=false);
-  canvas.addEventListener('mouseleave',() => drawing=false);
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing=true; ctx.beginPath(); ctx.moveTo(...pos(e.touches[0])); });
-  canvas.addEventListener('touchmove',  e => { e.preventDefault(); if(!drawing) return; ctx.lineTo(...pos(e.touches[0])); ctx.stroke(); });
-  canvas.addEventListener('touchend',   () => drawing=false);
-
-  function pos(e) {
-    const r = canvas.getBoundingClientRect();
-    return [e.clientX-r.left, e.clientY-r.top];
-  }
-  function clearCanvas() {
+  function clearCanvas(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    document.getElementById('charResults').innerHTML = '';
-    document.getElementById('topResult').textContent = '?';
-    document.getElementById('charHint').textContent  = 'Draw one character and click Predict';
+    document.getElementById('charResults').innerHTML='';
+    document.getElementById('topResult').textContent='?';
+    document.getElementById('charHint').textContent='Draw one character and click Predict';
   }
-  async function predictChar() {
-    const image = canvas.toDataURL('image/png');
-    document.getElementById('charHint').textContent = 'Predicting...';
-    const res   = await fetch('/predict_char', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({image})
-    });
-    const data  = await res.json();
-    const preds = data.predictions;
-    document.getElementById('topResult').textContent = preds[0].char;
-    document.getElementById('charHint').textContent  = `Confidence: ${preds[0].confidence}%`;
-    document.getElementById('charResults').innerHTML = preds.map(p => `
+
+  async function predictChar(){
+    const image=canvas.toDataURL('image/png');
+    document.getElementById('charHint').textContent='Predicting...';
+    const res=await fetch('/predict_char',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image})});
+    const data=await res.json();
+    const preds=data.predictions;
+    document.getElementById('topResult').textContent=preds[0].char;
+    document.getElementById('charHint').textContent=`Confidence: ${preds[0].confidence}%`;
+    document.getElementById('charResults').innerHTML=preds.map(p=>`
       <div class="result-item">
         <div class="char">${p.char}</div>
         <div class="bar-wrap">
@@ -218,38 +170,31 @@
       </div>`).join('');
   }
 
-  // ── Word ───────────────────────────────────────────────────
-  async function predictWord() {
-    const word = document.getElementById('wordInput').value.trim();
-    if (!word) return;
-    document.getElementById('wordResult').textContent = '...';
-    const res  = await fetch('/predict_word', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({word})
-    });
-    const data = await res.json();
-    document.getElementById('wordResult').textContent = data.prediction;
-    const imgEl = document.getElementById('wordImage');
-    imgEl.src   = 'data:image/png;base64,' + data.image;
-    imgEl.style.display = 'block';
+  async function predictWord(){
+    const word=document.getElementById('wordInput').value.trim();
+    if(!word)return;
+    document.getElementById('wordResult').textContent='...';
+    const res=await fetch('/predict_word',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({word})});
+    const data=await res.json();
+    document.getElementById('wordResult').textContent=data.prediction;
+    const imgEl=document.getElementById('wordImage');
+    imgEl.src='data:image/png;base64,'+data.image;
+    imgEl.style.display='block';
   }
 
-  // ── NLP ────────────────────────────────────────────────────
-  async function analyzeText() {
-    const text = document.getElementById('nlpInput').value.trim();
-    if (!text) return;
-    document.getElementById('nlpTranslation').textContent = 'Analyzing...';
-    const res  = await fetch('/analyze', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text})
-    });
-    const data = await res.json();
-    document.getElementById('nlpOriginal').textContent     = text;
-    document.getElementById('nlpTranslation').textContent  = data.translation;
-    document.getElementById('nlpSentiment').textContent    = data.sentiment;
-    document.getElementById('nlpWordCount').textContent    = data.word_count + ' words';
-    document.getElementById('nlpKeywords').innerHTML       =
-      data.keywords.map(k => `<span class="keyword-chip">${k}</span>`).join('');
+  async function analyzeText(){
+    const text=document.getElementById('nlpInput').value.trim();
+    if(!text)return;
+    document.getElementById('nlpTranslation').textContent='Analyzing...';
+    const res=await fetch('/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const data=await res.json();
+    document.getElementById('nlpOriginal').textContent    = text;
+    document.getElementById('nlpCorrected').textContent   = data.corrected;
+    document.getElementById('nlpFixes').textContent       = data.fixes.length > 0 ? data.fixes.join(', ') : 'No corrections needed';
+    document.getElementById('nlpTranslation').textContent = data.translation;
+    document.getElementById('nlpSentiment').textContent   = data.sentiment;
+    document.getElementById('nlpWordCount').textContent   = data.word_count + ' words';
+    document.getElementById('nlpKeywords').innerHTML      = data.keywords.map(k=>`<span class="chip">${k}</span>`).join(' ');
   }
 </script>
 </body>

@@ -71,14 +71,14 @@ CHARS = ['<blank>',
          'ा','ि','ी','ु','ू','े','ै','ो','ौ','ं','ः','्','ँ','ृ',
          'अ','आ','इ','ई','उ','ऊ','ए','ऐ','ओ','औ','अं','अः']
 
-idx2char  = {i: c for i, c in enumerate(CHARS)}
+idx2char   = {i: c for i, c in enumerate(CHARS)}
 CHAR_NAMES = ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ',
               'ट','ठ','ड','ढ','ण','त','थ','द','ध','न',
               'प','फ','ब','भ','म','य','र','ल','व','श',
               'ष','स','ह','क्ष','त्र','ज्ञ',
               '०','१','२','३','४','५','६','७','८','९']
 
-# ── Load all models ───────────────────────────────────────────
+# ── Load models ───────────────────────────────────────────────
 device = torch.device('cpu')
 
 cnn_model = NepaliOCR_CNN(num_classes=46)
@@ -95,6 +95,56 @@ mt_model     = MarianMTModel.from_pretrained("Helsinki-NLP/opus-mt-mul-en")
 print("All models loaded!")
 
 FONT_PATH = '/usr/share/fonts/truetype/noto/NotoSerifDevanagari-Bold.ttf'
+
+# ── Spell corrector ───────────────────────────────────────────
+def edit_distance(s1, s2):
+    m, n = len(s1), len(s2)
+    dp   = [[0]*(n+1) for _ in range(m+1)]
+    for i in range(m+1): dp[i][0] = i
+    for j in range(n+1): dp[0][j] = j
+    for i in range(1, m+1):
+        for j in range(1, n+1):
+            if s1[i-1] == s2[j-1]:
+                dp[i][j] = dp[i-1][j-1]
+            else:
+                dp[i][j] = 1 + min(dp[i-1][j],
+                                   dp[i][j-1],
+                                   dp[i-1][j-1])
+    return dp[m][n]
+
+NEPALI_DICTIONARY = [
+    'नेपाल','काठमाडौं','पोखरा','जनकपुर','भक्तपुर',
+    'ललितपुर','बिराटनगर','धरान','इटहरी','बुटवल',
+    'नारायणगढ','हेटौडा','दमक','इलाम','राजधानी',
+    'नमस्ते','धन्यवाद','शुभकामना','स्वागत',
+    'राम्रो','राम्री','सुन्दर','अग्लो','होचो',
+    'पानी','खाना','घर','ढोका','झ्याल',
+    'किताब','कलम','कापी','थैला','जुत्ता',
+    'आमा','बुवा','दाई','दिदी','भाई','बहिनी',
+    'साथी','शिक्षक','विद्यार्थी','विद्यालय',
+    'सूर्य','चन्द्र','तारा','आकाश','पृथ्वी',
+    'नदी','पहाड','जंगल','बाटो','खेत',
+    'देश','समाज','सरकार','जनता','अधिकार',
+    'मौसम','वर्षा','हिउँ','घाम','बादल',
+    'एक','सुन्दर','हो','छ','र','को','मा',
+]
+
+def correct_ocr(text, max_distance=2):
+    words       = text.split()
+    corrected   = []
+    corrections = []
+    for word in words:
+        best_word = word
+        best_dist = max_distance + 1
+        for dict_word in NEPALI_DICTIONARY:
+            dist = edit_distance(word, dict_word)
+            if dist < best_dist:
+                best_dist = dist
+                best_word = dict_word
+        corrected.append(best_word)
+        if best_word != word:
+            corrections.append(f"{word} → {best_word}")
+    return ' '.join(corrected), corrections
 
 # ── Helpers ───────────────────────────────────────────────────
 def ctc_decode(output):
@@ -178,15 +228,18 @@ def predict_word():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    text        = request.json['text']
-    translation = translate(text)
-    sentiment   = get_sentiment(text)
-    keywords    = get_keywords(text)
+    text             = request.json['text']
+    corrected, fixes = correct_ocr(text)
+    translation      = translate(corrected)
+    sentiment        = get_sentiment(corrected)
+    keywords         = get_keywords(corrected)
     return jsonify({
         'translation': translation,
         'sentiment':   sentiment,
         'keywords':    keywords,
-        'word_count':  len(text.split())
+        'word_count':  len(text.split()),
+        'corrected':   corrected,
+        'fixes':       fixes
     })
 
 if __name__ == '__main__':
