@@ -5,10 +5,13 @@ import numpy as np
 import base64
 from PIL import Image, ImageDraw, ImageFont
 import io
+from transformers import MarianMTModel, MarianTokenizer
+import warnings
+warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 
-# ── Character CNN Model ───────────────────────────────────────
+# ── Character CNN ─────────────────────────────────────────────
 class NepaliOCR_CNN(nn.Module):
     def __init__(self, num_classes=46):
         super().__init__()
@@ -24,15 +27,14 @@ class NepaliOCR_CNN(nn.Module):
         )
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(128 * 4 * 4, 256),
-            nn.ReLU(),
+            nn.Linear(128*4*4, 256), nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(256, num_classes)
         )
     def forward(self, x):
         return self.classifier(self.features(x))
 
-# ── CRNN Model ────────────────────────────────────────────────
+# ── CRNN ──────────────────────────────────────────────────────
 class CRNN(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
@@ -52,7 +54,6 @@ class CRNN(nn.Module):
         self.rnn = nn.LSTM(512*2, 256, num_layers=2,
                            bidirectional=True, batch_first=True, dropout=0.3)
         self.fc  = nn.Linear(512, num_classes)
-
     def forward(self, x):
         x = self.cnn(x)
         b, c, h, w = x.size()
@@ -70,40 +71,65 @@ CHARS = ['<blank>',
          'ा','ि','ी','ु','ू','े','ै','ो','ौ','ं','ः','्','ँ','ृ',
          'अ','आ','इ','ई','उ','ऊ','ए','ऐ','ओ','औ','अं','अः']
 
-idx2char = {i: c for i, c in enumerate(CHARS)}
-
+idx2char  = {i: c for i, c in enumerate(CHARS)}
 CHAR_NAMES = ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ',
               'ट','ठ','ड','ढ','ण','त','थ','द','ध','न',
               'प','फ','ब','भ','म','य','र','ल','व','श',
               'ष','स','ह','क्ष','त्र','ज्ञ',
               '०','१','२','३','४','५','६','७','८','९']
 
-# ── Load models ───────────────────────────────────────────────
+# ── Load all models ───────────────────────────────────────────
 device = torch.device('cpu')
 
 cnn_model = NepaliOCR_CNN(num_classes=46)
-cnn_model.load_state_dict(torch.load('../models/nepali_ocr_cnn.pth',
-                                      map_location=device))
+cnn_model.load_state_dict(torch.load('../models/nepali_ocr_cnn.pth', map_location=device))
 cnn_model.eval()
 
 crnn_model = CRNN(num_classes=len(CHARS))
-crnn_model.load_state_dict(torch.load('../models/crnn_nepali_v4.pth',
-                                       map_location=device))
+crnn_model.load_state_dict(torch.load('../models/crnn_nepali_v4.pth', map_location=device))
 crnn_model.eval()
-print("Both models loaded!")
+
+print("Loading translation model...")
+mt_tokenizer = MarianTokenizer.from_pretrained("Helsinki-NLP/opus-mt-mul-en")
+mt_model     = MarianMTModel.from_pretrained("Helsinki-NLP/opus-mt-mul-en")
+print("All models loaded!")
 
 FONT_PATH = '/usr/share/fonts/truetype/noto/NotoSerifDevanagari-Bold.ttf'
 
-# ── CTC Decoder ───────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────
 def ctc_decode(output):
     pred_ids = output.argmax(1).tolist()
-    chars = []
-    prev  = -1
+    chars = []; prev = -1
     for idx in pred_ids:
         if idx != prev and idx != 0:
             chars.append(idx2char[idx])
         prev = idx
     return ''.join(chars)
+
+def translate(text):
+    inputs     = mt_tokenizer(text, return_tensors="pt", padding=True)
+    translated = mt_model.generate(**inputs)
+    return mt_tokenizer.decode(translated[0], skip_special_tokens=True)
+
+def get_sentiment(text):
+    positive_words = ['राम्रो','सुन्दर','राम्री','खुशी','आनन्द',
+                      'प्रेम','मन','शुभ','सफल','उत्कृष्ट']
+    negative_words = ['नराम्रो','दुःख','समस्या','गाह्रो','कठिन',
+                      'रोग','मृत्यु','हार','असफल','खराब']
+    words     = text.split()
+    pos_count = sum(1 for w in words if w in positive_words)
+    neg_count = sum(1 for w in words if w in negative_words)
+    if pos_count > neg_count:
+        return "सकारात्मक (Positive) 😊"
+    elif neg_count > pos_count:
+        return "नकारात्मक (Negative) 😔"
+    return "तटस्थ (Neutral) 😐"
+
+def get_keywords(text):
+    stop_words = ['एक','को','मा','छ','हो','र','मलाई',
+                  'तपाईं','यो','त्यो','गर्न','भयो','छन्',
+                  'भने','गरे','हुन्छ','पर्छ','हुन्']
+    return [w for w in text.split() if w not in stop_words and len(w) > 1]
 
 # ── Routes ────────────────────────────────────────────────────
 @app.route('/')
@@ -114,7 +140,7 @@ def index():
 def predict_char():
     data     = request.json['image']
     img_data = base64.b64decode(data.split(',')[1])
-    img      = Image.open(io.BytesIO(img_data)).convert('L').resize((32, 32))
+    img      = Image.open(io.BytesIO(img_data)).convert('L').resize((32,32))
     img_np   = np.array(img).astype(np.float32) / 255.0
     if img_np.mean() > 0.5:
         img_np = 1.0 - img_np
@@ -133,31 +159,35 @@ def predict_char():
 @app.route('/predict_word', methods=['POST'])
 def predict_word():
     word = request.json['word']
-    # Generate word image
-    font    = ImageFont.truetype(FONT_PATH, size=48)
-    img     = Image.new('L', (256, 64), color=255)
-    draw    = ImageDraw.Draw(img)
-    bbox    = draw.textbbox((0,0), word, font=font)
-    w, h    = bbox[2]-bbox[0], bbox[3]-bbox[1]
-    x       = max(5, (256-w)//2)
-    y       = max(5, (64-h)//2)
-    draw.text((x, y), word, font=font, fill=0)
-
-    # Convert to tensor
-    img_np  = np.array(img).astype(np.float32) / 255.0
-    tensor  = torch.tensor(img_np).unsqueeze(0).unsqueeze(0)
-    tensor  = (tensor - 0.5) / 0.5
-
+    font = ImageFont.truetype(FONT_PATH, size=48)
+    img  = Image.new('L', (256, 64), color=255)
+    draw = ImageDraw.Draw(img)
+    bbox = draw.textbbox((0,0), word, font=font)
+    w, h = bbox[2]-bbox[0], bbox[3]-bbox[1]
+    draw.text(((256-w)//2, (64-h)//2), word, font=font, fill=0)
+    img_np = np.array(img).astype(np.float32) / 255.0
+    tensor = torch.tensor(img_np).unsqueeze(0).unsqueeze(0)
+    tensor = (tensor - 0.5) / 0.5
     with torch.no_grad():
         out  = crnn_model(tensor)
         pred = ctc_decode(out[0])
-
-    # Convert image to base64 for display
-    buf = io.BytesIO()
-    Image.fromarray((img_np * 255).astype(np.uint8)).save(buf, format='PNG')
+    buf     = io.BytesIO()
+    Image.fromarray((img_np*255).astype(np.uint8)).save(buf, format='PNG')
     img_b64 = base64.b64encode(buf.getvalue()).decode()
-
     return jsonify({'prediction': pred, 'image': img_b64})
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    text        = request.json['text']
+    translation = translate(text)
+    sentiment   = get_sentiment(text)
+    keywords    = get_keywords(text)
+    return jsonify({
+        'translation': translation,
+        'sentiment':   sentiment,
+        'keywords':    keywords,
+        'word_count':  len(text.split())
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
