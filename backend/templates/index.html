@@ -2,68 +2,87 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nepali OCR + NLP</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#6366f1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:Arial,sans-serif; background:#0f172a; color:#e2e8f0; min-height:100vh; padding:20px; display:flex; flex-direction:column; align-items:center; }
-  h1 { font-size:2rem; color:#f8fafc; text-align:center; margin-bottom:5px; }
-  p.sub { color:#94a3b8; text-align:center; margin-bottom:24px; }
-  .tabs { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; justify-content:center; }
-  .tab { padding:10px 24px; border:none; border-radius:8px; font-size:1rem; cursor:pointer; background:#1e293b; color:#94a3b8; }
-  .tab.active { background:#6366f1; color:white; }
-  .panel { display:none; width:100%; max-width:900px; }
-  .panel.active { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; }
-  .box { background:#1e293b; border-radius:12px; padding:24px; border:1px solid #334155; }
-  .box h2 { color:#c7d2fe; font-size:1rem; margin-bottom:16px; }
-  .btn { padding:10px 24px; border:none; border-radius:8px; font-size:1rem; cursor:pointer; }
-  .btn-p { background:#6366f1; color:white; }
-  .btn-g { background:#334155; color:#e2e8f0; }
-  canvas { border:3px solid #334155; border-radius:12px; background:#1e293b; cursor:crosshair; display:block; }
-  .btn-row { display:flex; gap:10px; margin-top:12px; }
-  #topResult { font-size:5rem; text-align:center; color:#a5b4fc; min-height:80px; margin-bottom:8px; }
-  .result-item { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-  .char { font-size:2rem; width:44px; text-align:center; }
+  body { font-family:'Inter',Arial,sans-serif; background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%); color:#e2e8f0; min-height:100vh; padding:20px; display:flex; flex-direction:column; align-items:center; }
+  .header { text-align:center; margin-bottom:32px; padding-top:10px; }
+  .header .logo { font-size:3rem; margin-bottom:8px; background:linear-gradient(135deg,#6366f1,#a855f7,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .header h1 { font-size:1.8rem; font-weight:700; color:#f8fafc; margin-bottom:6px; }
+  .header p { color:#94a3b8; font-size:0.9rem; }
+  .tabs { display:flex; gap:8px; margin-bottom:28px; background:#1e293b; padding:6px; border-radius:16px; border:1px solid #334155; flex-wrap:wrap; justify-content:center; }
+  .tab { padding:10px 20px; border:none; border-radius:12px; font-size:0.9rem; font-weight:500; cursor:pointer; background:transparent; color:#94a3b8; transition:all 0.2s; }
+  .tab.active { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:white; box-shadow:0 4px 15px rgba(99,102,241,0.4); }
+  .panel { display:none; width:100%; max-width:960px; }
+  .panel.active { display:flex; gap:24px; flex-wrap:wrap; justify-content:center; }
+  .card { background:rgba(30,41,59,0.8); backdrop-filter:blur(10px); border-radius:20px; padding:28px; border:1px solid rgba(99,102,241,0.2); box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+  .card h2 { color:#c7d2fe; font-size:1rem; font-weight:600; margin-bottom:20px; }
+  .btn { padding:12px 28px; border:none; border-radius:12px; font-size:0.95rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+  .btn-primary { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:white; box-shadow:0 4px 15px rgba(99,102,241,0.3); }
+  .btn-primary:hover { transform:translateY(-2px); }
+  .btn-secondary { background:#334155; color:#e2e8f0; }
+  .btn-row { display:flex; gap:10px; margin-top:16px; }
+  canvas { border:2px solid rgba(99,102,241,0.3); border-radius:16px; background:#0f172a; cursor:crosshair; display:block; }
+  #topResult { font-size:5rem; text-align:center; color:#a5b4fc; min-height:90px; margin-bottom:12px; }
+  .result-item { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .char-badge { font-size:1.8rem; width:48px; height:48px; text-align:center; background:#1e293b; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid #334155; }
   .bar-wrap { flex:1; }
-  .bar-label { font-size:0.8rem; color:#94a3b8; margin-bottom:3px; }
-  .bar-bg { background:#0f172a; border-radius:4px; height:8px; }
-  .bar-fill { height:8px; border-radius:4px; background:#6366f1; transition:width 0.5s; }
-  #charHint { color:#64748b; font-size:0.85rem; text-align:center; margin-top:8px; }
-  input[type=text] { width:100%; padding:10px 16px; border-radius:8px; border:2px solid #334155; background:#0f172a; color:#f1f5f9; font-size:1.1rem; margin-bottom:12px; }
+  .bar-label { font-size:0.8rem; color:#94a3b8; margin-bottom:5px; }
+  .bar-bg { background:#0f172a; border-radius:6px; height:8px; overflow:hidden; }
+  .bar-fill { height:8px; border-radius:6px; background:linear-gradient(90deg,#6366f1,#a855f7); transition:width 0.6s; }
+  #charHint { color:#64748b; font-size:0.85rem; text-align:center; margin-top:12px; }
+  input[type=text] { width:100%; padding:14px 18px; border-radius:12px; border:2px solid #334155; background:#0f172a; color:#f1f5f9; font-size:1.1rem; transition:border 0.2s; font-family:'Inter',Arial,sans-serif; margin-bottom:16px; }
   input[type=text]:focus { outline:none; border-color:#6366f1; }
-  #wordResult { font-size:2.5rem; text-align:center; color:#a5b4fc; min-height:60px; padding:10px; }
-  #wordImage { border-radius:8px; display:none; width:100%; margin-bottom:12px; }
-  .nlp-row { display:flex; gap:10px; margin-bottom:12px; }
-  .nlp-row input { margin-bottom:0; }
-  .nlp-result { margin-bottom:14px; }
-  .nlp-label { color:#94a3b8; font-size:0.85rem; margin-bottom:4px; }
-  .nlp-value { color:#f1f5f9; background:#0f172a; padding:8px 12px; border-radius:6px; }
-  .chip { display:inline-block; background:#312e81; color:#c7d2fe; padding:4px 10px; border-radius:20px; font-size:0.85rem; margin:3px; }
-  .fix { color:#fbbf24; font-size:0.85rem; }
+  #wordResult { font-size:2.5rem; text-align:center; color:#a5b4fc; min-height:70px; padding:16px; background:#0f172a; border-radius:12px; border:1px solid #334155; margin-top:16px; }
+  #wordImage { border-radius:12px; display:none; width:100%; margin:16px 0; border:1px solid #334155; filter:invert(1); }
+  .nlp-input-row { display:flex; gap:10px; margin-bottom:20px; }
+  .nlp-input-row input { margin-bottom:0; flex:1; }
+  .nlp-grid { display:grid; gap:14px; }
+  .nlp-item { background:#0f172a; border-radius:12px; padding:14px 16px; border:1px solid #1e293b; }
+  .nlp-label { font-size:0.78rem; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; }
+  .nlp-value { color:#e2e8f0; font-size:1rem; line-height:1.5; }
+  .chip { display:inline-block; background:rgba(99,102,241,0.2); color:#a5b4fc; padding:5px 12px; border-radius:20px; font-size:0.85rem; margin:3px; border:1px solid rgba(99,102,241,0.3); }
+  .loading { display:inline-block; width:16px; height:16px; border:2px solid #334155; border-top-color:#6366f1; border-radius:50%; animation:spin 0.8s linear infinite; margin-right:8px; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .record-btn-large { font-size:1.2rem; padding:20px 40px; border-radius:50px; width:100%; margin-bottom:16px; }
+  .recording { background:linear-gradient(135deg,#ef4444,#dc2626) !important; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.02)} }
+  @media(max-width:600px) { .tab{padding:8px 12px;font-size:0.8rem;} .card{padding:20px;} }
 </style>
 </head>
 <body>
 
-<h1>🔤 Nepali OCR + NLP</h1>
-<p class="sub">Character Recognition · Word Recognition · Translation · Sentiment</p>
+<div class="header">
+  <div class="logo">🔤</div>
+  <h1>Nepali OCR + NLP</h1>
+  <p>Character Recognition · Word Reading · Translation · Sentiment Analysis</p>
+</div>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('char')">✏️ Draw Character</button>
-  <button class="tab"        onclick="showTab('word')">📝 Read Word</button>
-  <button class="tab"        onclick="showTab('nlp')">🧠 NLP Analysis</button>
+  <button class="tab active" onclick="showTab('char')">✏️ Character</button>
+  <button class="tab" onclick="showTab('word')">📝 Word</button>
+  <button class="tab" onclick="showTab('nlp')">🧠 Analyze</button>
+  <button class="tab" onclick="showTab('voice')">🎤 Voice</button>
 </div>
 
 <!-- Character Panel -->
 <div class="panel active" id="charPanel">
-  <div class="box">
-    <h2>Draw a Devanagari character</h2>
+  <div class="card">
+    <h2>✏️ Draw a Devanagari Character</h2>
     <canvas id="canvas" width="280" height="280"></canvas>
     <div class="btn-row">
-      <button class="btn btn-p" onclick="predictChar()">Predict</button>
-      <button class="btn btn-g" onclick="clearCanvas()">Clear</button>
+      <button class="btn btn-primary" onclick="predictChar()">Predict</button>
+      <button class="btn btn-secondary" onclick="clearCanvas()">Clear</button>
     </div>
     <p id="charHint">Draw one character and click Predict</p>
   </div>
-  <div class="box" style="min-width:260px">
+  <div class="card" style="min-width:260px">
     <div id="topResult">?</div>
     <h2>Top 5 Predictions</h2>
     <div id="charResults"></div>
@@ -72,12 +91,11 @@
 
 <!-- Word Panel -->
 <div class="panel" id="wordPanel">
-  <div class="box" style="min-width:400px">
-    <h2>Type a Nepali word — CRNN reads it</h2>
+  <div class="card" style="min-width:400px; width:100%; max-width:500px">
+    <h2>📝 Read a Nepali Word</h2>
     <input type="text" id="wordInput" placeholder="नेपाल"
            onkeypress="if(event.key==='Enter') predictWord()" />
-    <button class="btn btn-p" onclick="predictWord()">Read Word</button>
-    <br><br>
+    <button class="btn btn-primary" onclick="predictWord()" style="width:100%">Read Word</button>
     <img id="wordImage" />
     <div id="wordResult">?</div>
   </div>
@@ -85,64 +103,69 @@
 
 <!-- NLP Panel -->
 <div class="panel" id="nlpPanel">
-  <div class="box" style="min-width:500px">
-    <h2>Analyze Nepali text</h2>
-    <div class="nlp-row">
+  <div class="card" style="width:100%; max-width:600px">
+    <h2>🧠 Analyze Nepali Text</h2>
+    <div class="nlp-input-row">
       <input type="text" id="nlpInput" placeholder="नेपाल एक सुन्दर देश हो"
              onkeypress="if(event.key==='Enter') analyzeText()" />
-      <button class="btn btn-p" onclick="analyzeText()">Analyze</button>
+      <button class="btn btn-primary" onclick="analyzeText()">Analyze</button>
     </div>
-
-    <div class="nlp-result">
-      <div class="nlp-label">📖 Original Text</div>
-      <div class="nlp-value" id="nlpOriginal">—</div>
-    </div>
-    <div class="nlp-result">
-      <div class="nlp-label">✏️ Corrected Text</div>
-      <div class="nlp-value" id="nlpCorrected">—</div>
-    </div>
-    <div class="nlp-result">
-      <div class="nlp-label">🔧 Spell Fixes</div>
-      <div class="nlp-value fix" id="nlpFixes">—</div>
-    </div>
-    <div class="nlp-result">
-      <div class="nlp-label">🌐 English Translation</div>
-      <div class="nlp-value" id="nlpTranslation">—</div>
-    </div>
-    <div class="nlp-result">
-      <div class="nlp-label">💬 Sentiment</div>
-      <div class="nlp-value" id="nlpSentiment">—</div>
-    </div>
-    <div class="nlp-result">
-      <div class="nlp-label">🔑 Keywords</div>
-      <div class="nlp-value" id="nlpKeywords">—</div>
-    </div>
-    <div class="nlp-result">
-      <div class="nlp-label">📊 Word Count</div>
-      <div class="nlp-value" id="nlpWordCount">—</div>
+    <div class="nlp-grid">
+      <div class="nlp-item"><div class="nlp-label">📖 Original Text</div><div class="nlp-value" id="nlpOriginal">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">✏️ Corrected Text</div><div class="nlp-value" id="nlpCorrected">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">🔧 Spell Fixes</div><div class="nlp-value" id="nlpFixes">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">🌐 English Translation</div><div class="nlp-value" id="nlpTranslation">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">💬 Sentiment</div><div class="nlp-value" id="nlpSentiment">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">🔑 Keywords</div><div class="nlp-value" id="nlpKeywords">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">📊 Word Count</div><div class="nlp-value" id="nlpWordCount">—</div></div>
     </div>
   </div>
 </div>
 
+<!-- Voice Panel -->
+<div class="panel" id="voicePanel">
+  <div class="card" style="width:100%; max-width:600px">
+    <h2>🎤 Nepali Voice Translator</h2>
+    <div style="text-align:center; padding:20px 0;">
+      <button class="btn btn-primary record-btn-large" id="recordBtn" onclick="startRecording()">
+        🎤 Start Recording (5 sec)
+      </button>
+      <p id="voiceHint" style="color:#64748b; margin-top:12px; font-size:0.95rem;">
+        Click the button then speak in Nepali
+      </p>
+    </div>
+    <div class="nlp-grid" id="voiceResults" style="display:none">
+      <div class="nlp-item"><div class="nlp-label">🎤 Heard (Nepali)</div><div class="nlp-value" id="voiceNepali">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">✏️ Corrected</div><div class="nlp-value" id="voiceCorrected">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">🌐 English Translation</div><div class="nlp-value" id="voiceTranslation">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">💬 Sentiment</div><div class="nlp-value" id="voiceSentiment">—</div></div>
+      <div class="nlp-item"><div class="nlp-label">🔑 Keywords</div><div class="nlp-value" id="voiceKeywords">—</div></div>
+    </div>
+    <div id="voiceHistory" style="margin-top:20px;"></div>
+  </div>
+</div>
+
 <script>
+  // Tabs
   function showTab(tab) {
-    ['char','word','nlp'].forEach((t,i) => {
+    ['char','word','nlp','voice'].forEach((t,i) => {
       document.querySelectorAll('.tab')[i].classList.toggle('active', t===tab);
       document.getElementById(t+'Panel').classList.toggle('active', t===tab);
     });
   }
 
+  // Canvas
   const canvas = document.getElementById('canvas');
   const ctx    = canvas.getContext('2d');
   let drawing  = false;
-  ctx.strokeStyle='#f1f5f9'; ctx.lineWidth=16; ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.strokeStyle='#a5b4fc'; ctx.lineWidth=14; ctx.lineCap='round'; ctx.lineJoin='round';
   canvas.addEventListener('mousedown', e=>{drawing=true; ctx.beginPath(); ctx.moveTo(...pos(e));});
   canvas.addEventListener('mousemove', e=>{if(!drawing)return; ctx.lineTo(...pos(e)); ctx.stroke();});
   canvas.addEventListener('mouseup',   ()=>drawing=false);
   canvas.addEventListener('mouseleave',()=>drawing=false);
-  canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;ctx.beginPath();ctx.moveTo(...pos(e.touches[0]));});
-  canvas.addEventListener('touchmove', e=>{e.preventDefault();if(!drawing)return;ctx.lineTo(...pos(e.touches[0]));ctx.stroke();});
-  canvas.addEventListener('touchend',  ()=>drawing=false);
+  canvas.addEventListener('touchstart', e=>{e.preventDefault();drawing=true;ctx.beginPath();ctx.moveTo(...pos(e.touches[0]));});
+  canvas.addEventListener('touchmove',  e=>{e.preventDefault();if(!drawing)return;ctx.lineTo(...pos(e.touches[0]));ctx.stroke();});
+  canvas.addEventListener('touchend',   ()=>drawing=false);
   function pos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
 
   function clearCanvas(){
@@ -154,7 +177,7 @@
 
   async function predictChar(){
     const image=canvas.toDataURL('image/png');
-    document.getElementById('charHint').textContent='Predicting...';
+    document.getElementById('charHint').innerHTML='<span class="loading"></span>Predicting...';
     const res=await fetch('/predict_char',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image})});
     const data=await res.json();
     const preds=data.predictions;
@@ -162,9 +185,9 @@
     document.getElementById('charHint').textContent=`Confidence: ${preds[0].confidence}%`;
     document.getElementById('charResults').innerHTML=preds.map(p=>`
       <div class="result-item">
-        <div class="char">${p.char}</div>
+        <div class="char-badge">${p.char}</div>
         <div class="bar-wrap">
-          <div class="bar-label">${p.confidence}%</div>
+          <div class="bar-label">${p.char} — ${p.confidence}%</div>
           <div class="bar-bg"><div class="bar-fill" style="width:${p.confidence}%"></div></div>
         </div>
       </div>`).join('');
@@ -173,7 +196,7 @@
   async function predictWord(){
     const word=document.getElementById('wordInput').value.trim();
     if(!word)return;
-    document.getElementById('wordResult').textContent='...';
+    document.getElementById('wordResult').innerHTML='<span class="loading"></span>';
     const res=await fetch('/predict_word',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({word})});
     const data=await res.json();
     document.getElementById('wordResult').textContent=data.prediction;
@@ -185,16 +208,57 @@
   async function analyzeText(){
     const text=document.getElementById('nlpInput').value.trim();
     if(!text)return;
-    document.getElementById('nlpTranslation').textContent='Analyzing...';
+    document.getElementById('nlpTranslation').innerHTML='<span class="loading"></span>Analyzing...';
     const res=await fetch('/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
     const data=await res.json();
     document.getElementById('nlpOriginal').textContent    = text;
     document.getElementById('nlpCorrected').textContent   = data.corrected;
-    document.getElementById('nlpFixes').textContent       = data.fixes.length > 0 ? data.fixes.join(', ') : 'No corrections needed';
+    document.getElementById('nlpFixes').innerHTML         = data.fixes.length>0 ? data.fixes.map(f=>`<span class="chip">${f}</span>`).join(' ') : '<span style="color:#64748b">None</span>';
     document.getElementById('nlpTranslation').textContent = data.translation;
     document.getElementById('nlpSentiment').textContent   = data.sentiment;
-    document.getElementById('nlpWordCount').textContent   = data.word_count + ' words';
-    document.getElementById('nlpKeywords').innerHTML      = data.keywords.map(k=>`<span class="chip">${k}</span>`).join(' ');
+    document.getElementById('nlpKeywords').innerHTML      = data.keywords.map(k=>`<span class="chip">${k}</span>`).join('');
+    document.getElementById('nlpWordCount').textContent   = data.word_count+' words';
+  }
+
+  // Voice
+  const voiceLog = [];
+  async function startRecording(){
+    const btn=document.getElementById('recordBtn');
+    btn.disabled=true;
+    btn.classList.add('recording');
+    btn.textContent='🔴 Recording... Speak now!';
+    document.getElementById('voiceHint').innerHTML='<span class="loading"></span>Recording 5 seconds...';
+    try {
+      const res=await fetch('/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({seconds:5})});
+      const data=await res.json();
+      if(data.error){
+        document.getElementById('voiceHint').textContent='❌ '+data.error;
+      } else {
+        document.getElementById('voiceResults').style.display='grid';
+        document.getElementById('voiceNepali').textContent      = data.text;
+        document.getElementById('voiceCorrected').textContent   = data.corrected;
+        document.getElementById('voiceTranslation').textContent = data.translation;
+        document.getElementById('voiceSentiment').textContent   = data.sentiment;
+        document.getElementById('voiceKeywords').innerHTML      = data.keywords.map(k=>`<span class="chip">${k}</span>`).join('');
+        document.getElementById('voiceHint').textContent        = '✓ Done! Click to record again';
+        voiceLog.unshift(data);
+        document.getElementById('voiceHistory').innerHTML =
+          voiceLog.length>0 ? '<div style="color:#94a3b8;font-size:0.85rem;margin-bottom:8px">Recent:</div>'+
+          voiceLog.slice(0,5).map((d,i)=>`<div class="nlp-item" style="margin-bottom:8px"><div class="nlp-label">#${i+1}</div><div class="nlp-value">${d.text} → ${d.translation}</div></div>`).join('') : '';
+      }
+    } catch(e){
+      document.getElementById('voiceHint').textContent='❌ Error: '+e.message;
+    }
+    btn.disabled=false;
+    btn.classList.remove('recording');
+    btn.textContent='🎤 Start Recording (5 sec)';
+  }
+
+  // Service Worker
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/static/sw.js')
+      .then(()=>console.log('SW registered'))
+      .catch(e=>console.log('SW error',e));
   }
 </script>
 </body>

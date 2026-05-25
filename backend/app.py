@@ -76,13 +76,15 @@ CHAR_NAMES = ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ',
               'ट','ठ','ड','ढ','ण','त','थ','द','ध','न',
               'प','फ','ब','भ','म','य','र','ल','व','श',
               'ष','स','ह','क्ष','त्र','ज्ञ',
-              '०','१','२','३','४','५','६','७','८','९']
+              '०','१','२','३','४','५','६','७','८','९',
+              'अ','आ','इ','ई','उ','ऊ','ए','ऐ','ओ','औ',
+              'ॐ','अं','अः']
 
 # ── Load models ───────────────────────────────────────────────
 device = torch.device('cpu')
 
-cnn_model = NepaliOCR_CNN(num_classes=46)
-cnn_model.load_state_dict(torch.load('../models/nepali_ocr_cnn.pth', map_location=device))
+cnn_model = NepaliOCR_CNN(num_classes=59)
+cnn_model.load_state_dict(torch.load('../models/nepali_ocr_cnn_v3.pth', map_location=device))
 cnn_model.eval()
 
 crnn_model = CRNN(num_classes=len(CHARS))
@@ -92,8 +94,12 @@ crnn_model.eval()
 print("Loading translation model...")
 mt_tokenizer = MarianTokenizer.from_pretrained("Helsinki-NLP/opus-mt-mul-en")
 mt_model     = MarianMTModel.from_pretrained("Helsinki-NLP/opus-mt-mul-en")
+print("Loading Whisper model...")
+import whisper as whisper_lib
+whisper_model = whisper_lib.load_model('small')
 print("All models loaded!")
 
+app.static_folder = 'static'
 FONT_PATH = '/usr/share/fonts/truetype/noto/NotoSerifDevanagari-Bold.ttf'
 
 # ── Spell corrector ───────────────────────────────────────────
@@ -242,5 +248,46 @@ def analyze():
         'fixes':       fixes
     })
 
+@app.route('/voice', methods=['POST'])
+def voice():
+    import sounddevice as sd
+    import soundfile as sf
+    import whisper
+    import tempfile
+    import os
+
+    seconds = request.json.get('seconds', 5)
+
+    # Record audio
+    recording = sd.rec(int(seconds * 16000), samplerate=16000, channels=1)
+    sd.wait()
+
+    # Save to temp file
+    tmp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+    sf.write(tmp.name, recording, 16000)
+
+    # Transcribe
+    model = whisper_model
+    result = model.transcribe(tmp.name, language='ne')
+    os.unlink(tmp.name)
+
+    nepali_text = result['text'].strip()
+    if not nepali_text:
+        return jsonify({'error': 'No speech detected', 'text': ''})
+
+    # Translate and analyze
+    corrected, fixes = correct_ocr(nepali_text)
+    translation      = translate(corrected)
+    sentiment        = get_sentiment(corrected)
+    keywords         = get_keywords(corrected)
+
+    return jsonify({
+        'text':        nepali_text,
+        'corrected':   corrected,
+        'translation': translation,
+        'sentiment':   sentiment,
+        'keywords':    keywords,
+        'fixes':       fixes
+    })
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, host='0.0.0.0')
